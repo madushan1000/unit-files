@@ -1,0 +1,21 @@
+[Unit]
+Description=Rocket chat service
+After=mongodb.service
+Required=mongodb.service
+
+[Service]
+TimeoutStartSec=0
+EnvironmentFile=/etc/environment
+
+ExecStartPre=-/usr/bin/etcdctl mkdir /apps/rchat
+ExecStartPre=/bin/bash -c "/usr/bin/etcdctl set /apps/rchat/image-sha $(/usr/bin/rkt --insecure-skip-verify fetch docker://rocketchat/rocket.chat 2>/dev/null | /usr/bin/tail -n 1)"
+
+ExecStart=/bin/bash -c "\
+		   set -e; \
+		   MONGO_URL=mongodb://$(/usr/bin/etcdctl get /services/mongo/host):27017/rchat; \
+		   ROOT_URL=http://localhost/; \
+		   PORT=80; \
+		  /usr/bin/rkt --insecure-skip-verify run $(/usr/bin/etcdctl get /apps/rchat/image-sha) --set-env=MONGO_URL=$MONGO_URL --set-env=ROOT_URL=$ROOT_URL --set-env=PORT=$PORT"
+
+KillMode=mixed
+Restart=always

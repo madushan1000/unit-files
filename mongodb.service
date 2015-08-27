@@ -1,0 +1,14 @@
+[Unit]
+Description=Mongodb service
+
+[Service]
+TimeoutStartSec=0
+EnvironmentFile=/etc/environment
+ExecStartPre=-/usr/bin/etcdctl mkdir /services/mongo
+ExecStartPre=/bin/bash -c "/usr/bin/etcdctl set /services/mongo/image-sha $(/usr/bin/rkt --insecure-skip-verify fetch docker://mongo 2>/dev/null | /usr/bin/tail -n 1)"
+ExecStart=/bin/bash -c "\
+		   set -e; \
+		  /usr/bin/etcdctl set /services/mongo/host $COREOS_PRIVATE_IPV4; \
+		  /usr/bin/rkt --insecure-skip-verify run $(/usr/bin/etcdctl get /services/mong/image-sha)"
+KillMode=mixed
+Restart=always
