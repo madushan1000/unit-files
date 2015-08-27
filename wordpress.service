@@ -1,0 +1,24 @@
+[Unit]
+Description=My Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+KillMode=none
+EnvironmentFile=/etc/environment
+
+ExecStartPre=-/usr/bin/docker kill wordpress
+ExecStartPre=-/usr/bin/docker rm wordpress
+ExecStartPre=/usr/bin/docker pull wordpress
+ExecStart=/bin/bash -c "\
+          set -e; \
+		  MYSQL_HOST=$(etcdctl get /services/mysql/host 2>/dev/null); \
+          MYSQL_ROOT_PASSWORD=$(etcdctl get /services/mysql/password 2>/dev/null); \
+          /usr/bin/docker run\
+            --env WORDPRESS_DB_PASSWORD=$MYSQL_ROOT_PASSWORD \
+			--env WORDPRESS_DB_HOST=$MYSQL_HOST:3306 \
+            --name wordpress \
+            --publish $COREOS_PUBLIC_IPV4:80:80 \
+            wordpress"
+ExecStop=/usr/bin/docker stop wordpress

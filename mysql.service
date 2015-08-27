@@ -1,0 +1,25 @@
+[Unit]
+Description=My Service
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+KillMode=none
+EnvironmentFile=/etc/environment
+
+ExecStartPre=-/usr/bin/etcdctl mkdir /services/mysql
+ExecStartPre=-/usr/bin/docker kill mysql
+ExecStartPre=-/usr/bin/docker rm mysql
+ExecStartPre=/usr/bin/docker pull mysql
+ExecStart=/bin/bash -c "\
+		  /usr/bin/etcdctl set /services/mysql/host $COREOS_PRIVATE_IPV4; \
+          set -e; \
+          MYSQL_ROOT_PASSWORD=$(etcdctl get /services/mysql/password 2>/dev/null); \
+	  /usr/bin/docker run\
+	    --env MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD \
+	    --name mysql \
+	    --publish $COREOS_PRIVATE_IPV4:3306:3306 \
+	    mysql"
+
+ExecStop=/usr/bin/docker stop mysql
